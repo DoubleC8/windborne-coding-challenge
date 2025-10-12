@@ -2,9 +2,9 @@
 
 import {
   BalloonDataResponse,
-  balloonTrajectories,
   fetchBalloonData,
   getAverageDist,
+  getBalloonTrajectories,
   getMaxAltitude,
   getMaxDistance,
   getMinAltitude,
@@ -12,38 +12,28 @@ import {
 } from "@/lib/utils/balloonData";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Card, CardHeader } from "../ui/card";
-import {
-  ChevronDown,
-  ChevronUp,
-  Crosshair,
-  MountainSnow,
-  Plane,
-  Rabbit,
-  Turtle,
-} from "lucide-react";
-import BalloonDataCard from "../balloons-overview/BalloonDataCard";
+import { ChevronDown, ChevronUp, Plane, Rabbit, Turtle } from "lucide-react";
+import BalloonDataCard from "@/components/balloons-overview/BalloonDataCard";
 
 export default function BallonsOverview() {
   const [balloonData, setBalloonData] = useState<BalloonDataResponse | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     fetchBalloonData()
       .then((data) => {
-        console.log("Fetched balloon data:", data);
         setBalloonData(data);
         toast.success("Successfully fetched balloon data.", {
           description: `At ${new Date().toLocaleTimeString("en-US")}`,
         });
       })
-      .catch((err) => {
-        console.error("Error fetching balloon data:", err);
+      .catch((error) => {
+        console.error("Error fetching balloon data:", error);
         toast.error(
-          "An Unexpected Error has Occured while trying to get balloon data.",
+          "An unexpected error occured while trying to fetch balloon data.",
           {
             description: "Please try again later.",
           }
@@ -59,15 +49,19 @@ export default function BallonsOverview() {
   }
 
   const { data, metadata } = balloonData;
-  const balloonPaths = balloonTrajectories(data);
+  const balloonPaths = getBalloonTrajectories(data);
   const highestBalloon = getMaxAltitude(balloonPaths);
   const lowestBalloon = getMinAltitude(balloonPaths);
   const longestDistBalloon = getMaxDistance(balloonPaths);
   const shortestDistBalloon = getMinDistance(balloonPaths);
   const averageDistance = getAverageDist(balloonPaths);
 
-  console.log("Data: ", data);
-  console.log("The longest distance was: ", longestDistBalloon.distance);
+  console.log("Data: ", balloonData);
+  console.log("Trajectories: ", balloonPaths);
+  console.log(
+    "Flattened trajectories: ",
+    balloonPaths.flatMap((t) => t.path)
+  );
 
   return (
     <div className="flex flex-wrap gap-5 justify-between">

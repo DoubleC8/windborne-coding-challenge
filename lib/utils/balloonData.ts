@@ -47,7 +47,7 @@ export async function fetchBalloonData(): Promise<BalloonDataResponse> {
   }
 }
 
-export function balloonTrajectories(data: BalloonPoint[][]): BalloonTrajectory[] {
+export function getBalloonTrajectories(data: BalloonPoint[][]): BalloonTrajectory[] {
     const maxBalloons = Math.max(...data.map(hour => hour.length));
 
     const trajectories: BalloonTrajectory[] = [];
@@ -107,7 +107,6 @@ export function getMaxAltitude(trajectories: BalloonTrajectory[]){
     time: maxPoint ? new Date(maxPoint.timestamp) : null, 
   }
 }
-
 
 export function getMinAltitude(trajectories: BalloonTrajectory[]){
   if (trajectories.length === 0) {
@@ -210,4 +209,41 @@ export function getDistance(lat1: number, lat2: number, lon1: number, lon2: numb
 
   const distance = (2 * earthsRadius) * b;
   return distance;
+}
+
+export function getGlobalCoverageStats(trajectories: BalloonTrajectory[]){
+  if(!trajectories || trajectories.length === 0){
+    return {
+      totalBalloons: 0,
+      minLat: null, 
+      maxLat: null, 
+      minLon: null, 
+      maxLon: null, 
+      latRange: 0, 
+      lonRange: 0, 
+    }
+  }
+
+  const allPoints = trajectories.flatMap((t) => t.path);
+
+  const lats = allPoints.map((p) => p.lat);
+  const lons = allPoints.map((p) => p.lon);
+
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+
+  const latRange = maxLat - minLat;
+  const lonRange = maxLon - minLon;
+
+  return {
+    totalBalloons: trajectories.length,
+    minLat,
+    maxLat,
+    minLon,
+    maxLon,
+    latRange,
+    lonRange,
+  };
 }

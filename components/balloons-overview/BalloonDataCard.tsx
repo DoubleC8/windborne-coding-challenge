@@ -26,7 +26,7 @@ export default function BalloonDataCard({
       : "Unavailable";
 
   return (
-    <Card className="flex flex-col justify-evenly w-[49%] min-h-[20vh] text-center">
+    <Card className="flex flex-col gap-5 w-[49%] h-[25vh] text-center">
       <CardHeader className="flex flex-col items-center justify-center">
         <Icon className="text-[var(--app-green)] size-6" />
         <p className="font-extrabold">{title}</p>
@@ -36,10 +36,12 @@ export default function BalloonDataCard({
         {message}: <strong className="text-[var(--app-green)]">{safeKm}</strong>{" "}
         km
         <br />
-        <span className="text-sm text-muted-foreground">
-          By Balloon{" "}
-          <strong className="text-[var(--app-green)]">{safeBalloon}</strong>
-        </span>
+        {balloonId ? (
+          <span className="text-sm text-muted-foreground">
+            By Balloon{" "}
+            <strong className="text-[var(--app-green)]">{safeBalloon}</strong>
+          </span>
+        ) : null}
       </p>
     </Card>
   );
