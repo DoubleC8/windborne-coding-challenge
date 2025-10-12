@@ -36,8 +36,13 @@ export default function RootLayout({
         <SidebarProvider>
           <AppSidebar />
           <main className="w-full flex gap-3">
-            <SidebarTrigger />
-            {children}
+            <SidebarTrigger className="text-[var(--app-green)]" />
+            <div className="w-full flex flex-col gap-3">
+              <h1 className="text-2xl font-extrabold text-center text-[var(--app-green)]">
+                WindBorne Engineering Chanllenge
+              </h1>
+              {children}
+            </div>
             <Toaster richColors={true} position="top-right" />
           </main>
         </SidebarProvider>

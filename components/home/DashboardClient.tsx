@@ -53,7 +53,7 @@ export default function DashboardClient() {
     return (
       <div className="min-h-[600px] w-full flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-2">⚠️ {error || "No data available"}</p>
+          <p className="text-red-600 mb-2">{error || "No data available"}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
