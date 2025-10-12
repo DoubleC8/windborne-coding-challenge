@@ -1,10 +1,30 @@
 "use client";
 
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import {
+  MapContainer,
+  Marker,
+  Polyline,
+  TileLayer,
+  Tooltip,
+} from "react-leaflet";
 import L from "leaflet";
-// @ts-ignore
+// @ts-expect-error
 import "leaflet/dist/leaflet.css";
-import { BalloonDataResponse } from "@/lib/utils/balloonData";
+import { BalloonTrajectory } from "@/lib/utils/balloonData";
+import { memo } from "react";
+
+const MAP_CONFIG = {
+  center: [0, 0] as [number, number],
+  zoom: 2,
+  height: "70vh",
+  borderRadius: "16px",
+} as const;
+
+const POLYLINE_CONFIG = {
+  color: "var(--app-green)",
+  weight: 1.5,
+  opacity: 0.6,
+} as const;
 
 // Fix for default marker icon in Next.js
 if (typeof window !== "undefined") {
@@ -19,22 +39,76 @@ if (typeof window !== "undefined") {
   });
 }
 
-interface MapComponentProps {
-  balloonData: BalloonDataResponse;
-}
+const BalloonTrajectoryLayer = memo(
+  ({ balloon }: { balloon: BalloonTrajectory }) => {
+    if (!balloon.path.length) return null;
 
-export default function MapComponent({ balloonData }: MapComponentProps) {
+    const positions = balloon.path.map(
+      (p) => [p.lat, p.lon] as [number, number]
+    );
+
+    const latest = balloon.path[0];
+
+    return (
+      <>
+        <Polyline positions={positions} pathOptions={POLYLINE_CONFIG}>
+          <Tooltip direction="top">
+            <div className="text-sm">
+              <strong className="text-[var(--app-green)]">
+                Balloon #{balloon.id}
+              </strong>
+              <br />
+              Altitude: {latest.alt.toFixed(1)} km
+              <br />
+              Position: {latest.lat.toFixed(4)}°, {latest.lon.toFixed(4)}°
+            </div>
+          </Tooltip>
+        </Polyline>
+
+        <Marker position={[latest.lat, latest.lon]}>
+          <Tooltip direction="top">
+            <div className="text-sm">
+              <strong className="text-[var(--app-green)]">
+                Balloon #{balloon.id}
+              </strong>
+              <br />
+              Altitude: {latest.alt.toFixed(2)} km
+              <br />
+              Current Position: {latest.lat.toFixed(4)}°,{" "}
+              {latest.lon.toFixed(4)}°
+            </div>
+          </Tooltip>
+        </Marker>
+      </>
+    );
+  }
+);
+
+BalloonTrajectoryLayer.displayName = "BalloonTrajectoryLayer";
+
+export default function MapComponent({
+  balloonPaths,
+}: {
+  balloonPaths: BalloonTrajectory[];
+}) {
   return (
     <MapContainer
-      center={[37.487499, -122.200915]}
-      zoom={13}
+      center={MAP_CONFIG.center}
+      zoom={MAP_CONFIG.zoom}
       scrollWheelZoom={true}
-      style={{ height: "50vh", width: "100%", borderRadius: "8px" }}
+      style={{
+        height: MAP_CONFIG.height,
+        width: "100%",
+        borderRadius: MAP_CONFIG.borderRadius,
+      }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {balloonPaths.map((balloon) => (
+        <BalloonTrajectoryLayer key={balloon.id} balloon={balloon} />
+      ))}
     </MapContainer>
   );
 }

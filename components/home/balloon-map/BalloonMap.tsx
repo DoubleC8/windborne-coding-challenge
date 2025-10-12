@@ -1,24 +1,20 @@
 "use client";
 
-import { BalloonDataResponse } from "@/lib/utils/balloonData";
+import { MapLoader } from "@/components/ui/loaders/MapLoader";
+import { BalloonTrajectory } from "@/lib/utils/balloonData";
 import dynamic from "next/dynamic";
 
-const MapWithNoSSR = dynamic<{ balloonData: BalloonDataResponse }>(
-  () => import("./MapComponent"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[600px] w-full flex items-center justify-center bg-gray-100 rounded-lg">
-        <p className="text-gray-600">Loading map...</p>
-      </div>
-    ),
-  }
-);
+const MapWithNoSSR = dynamic<{
+  balloonPaths: BalloonTrajectory[];
+}>(() => import("./MapComponent"), {
+  ssr: false,
+  loading: () => <MapLoader />,
+});
 
-interface BalloonMapProps {
-  balloonData: BalloonDataResponse;
-}
-
-export default function BalloonMap({ balloonData }: BalloonMapProps) {
-  return <MapWithNoSSR balloonData={balloonData} />;
+export default function BalloonMap({
+  balloonPaths,
+}: {
+  balloonPaths: BalloonTrajectory[];
+}) {
+  return <MapWithNoSSR balloonPaths={balloonPaths} />;
 }

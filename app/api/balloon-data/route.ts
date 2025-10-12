@@ -66,15 +66,18 @@ export async function GET() {
   fetchedData.forEach(({ points }) => results.push(points));
 
   const totalPoints = results.flat().length;
+  const totalBalloons = results[0]?.length || 0;
   const hoursWithData = results.filter(arr => arr.length > 0).length;
+
 
   return NextResponse.json({
     success: true,
     data: results,
     metadata: {
       totalPoints,
+      totalBalloons,
       hoursWithData,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: new Date().toLocaleTimeString("en-us", { hour: '2-digit', minute: '2-digit' }),
     },
   });
 }

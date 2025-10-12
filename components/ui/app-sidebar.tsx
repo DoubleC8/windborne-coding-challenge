@@ -30,7 +30,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent>
         <SidebarGroup className="flex flex-col gap-3">
-          <SidebarGroupLabel className="flex items-center gap-1 text-lg font-extrabold">
+          <SidebarGroupLabel className="flex items-center gap-1 text-lg font-extrabold text-[var(--app-green)]">
             <Fan />
             WindBorne
           </SidebarGroupLabel>

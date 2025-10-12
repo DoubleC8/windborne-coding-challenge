@@ -11,6 +11,7 @@ export type BalloonDataResponse = {
   data: BalloonPoint[][];
   metadata: {
     totalPoints: number;
+    totalBalloons: number;
     hoursWithData: number;
     fetchedAt: string;
   };
@@ -40,6 +41,7 @@ export async function fetchBalloonData(): Promise<BalloonDataResponse> {
       data: Array(24).fill([]),
       metadata: {
         totalPoints: 0,
+        totalBalloons: 0,
         hoursWithData: 0,
         fetchedAt: new Date().toISOString(),
       },

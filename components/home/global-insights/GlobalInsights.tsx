@@ -6,11 +6,11 @@ import {
   getGlobalCoverageStats,
 } from "@/lib/utils/balloonData";
 
-interface GlobalInsightsProps {
+export default function GlobalInsights({
+  balloonData,
+}: {
   balloonData: BalloonDataResponse;
-}
-
-export default function GlobalInsights({ balloonData }: GlobalInsightsProps) {
+}) {
   const { data } = balloonData;
   const balloonPaths = getBalloonTrajectories(data);
   const coverage = getGlobalCoverageStats(balloonPaths);

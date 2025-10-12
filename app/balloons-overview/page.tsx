@@ -48,7 +48,7 @@ export default function BallonsOverview() {
     return <div>No balloon data available :(</div>;
   }
 
-  const { data, metadata } = balloonData;
+  const { data } = balloonData;
   const balloonPaths = getBalloonTrajectories(data);
   const highestBalloon = getMaxAltitude(balloonPaths);
   const lowestBalloon = getMinAltitude(balloonPaths);

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-// @ts-ignore
+// @ts-expect-error
 import "./globals.css";
 import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/ui/app-sidebar";
-// @ts-ignore
+// @ts-expect-error
 import "leaflet/dist/leaflet.css";
 
 const geistSans = Geist({
@@ -39,7 +39,7 @@ export default function RootLayout({
             <SidebarTrigger className="text-[var(--app-green)]" />
             <div className="w-full flex flex-col gap-3">
               <h1 className="text-2xl font-extrabold text-center text-[var(--app-green)]">
-                WindBorne Engineering Chanllenge
+                WindBorne Engineering Challenge
               </h1>
               {children}
             </div>
