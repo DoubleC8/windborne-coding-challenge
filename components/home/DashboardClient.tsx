@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, Frown, RefreshCcw } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import Link from "next/link";
-import { HomePageLoader } from "../ui/loaders/HomePageLoader";
+import { PageLoader } from "../ui/loaders/PageLoader";
 
 const BALLOONS_PER_PAGE = 200;
 
@@ -76,6 +76,8 @@ export default function DashboardClient() {
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(fetchData, 600000);
+    return () => clearInterval(interval);
   }, []);
 
   const balloonPaths = balloonData
@@ -89,7 +91,7 @@ export default function DashboardClient() {
     pagination.endIndex
   );
 
-  if (loading) return <HomePageLoader />;
+  if (loading) return <PageLoader />;
   if (error || !balloonData)
     return (
       <div className="flex flex-col justify-center h-full">
@@ -113,50 +115,63 @@ export default function DashboardClient() {
     );
 
   return (
-    <div className="flex flex-col justify-center h-full">
-      <div className="flex flex-col gap-4">
-        <p className="text-sm text-muted-foreground">
-          Tracking{" "}
-          <strong className="text-[var(--app-green)] text-lg">
-            {balloonData.metadata.totalBalloons.toLocaleString()}
-          </strong>{" "}
-          balloons worldwide
-        </p>
+    <div className="flex flex-col gap-3 justify-center h-full">
+      {/**contains balloon map */}
+      <>
+        <div className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">Balloon Map</h2>
 
-        <BalloonMap balloonPaths={paginatedPaths} />
-
-        <div className="flex items-center justify-between gap-4 px-2">
-          <Button
-            onClick={pagination.goPrev}
-            disabled={!pagination.canGoPrev}
-            variant="outline"
-            size="sm"
-            className="disabled:opacity-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="hidden sm:inline ml-1">Previous</span>
-          </Button>
-
-          <p className="text-xs sm:text-sm text-muted-foreground text-center">
-            Showing <strong>{pagination.startIndex + 1}</strong> –{" "}
-            <strong>{pagination.endIndex}</strong> of{" "}
-            <strong>{balloonPaths.length}</strong>
+          <p className="text-sm text-muted-foreground">
+            Tracking{" "}
+            <strong className="text-[var(--app-green)] text-lg">
+              {balloonData.metadata.totalBalloons.toLocaleString()}
+            </strong>{" "}
+            balloons worldwide.
           </p>
 
-          <Button
-            onClick={pagination.goNext}
-            disabled={!pagination.canGoNext}
-            variant="outline"
-            size="sm"
-            className="disabled:opacity-50"
-          >
-            <span className="hidden sm:inline mr-1">Next</span>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+          <BalloonMap balloonPaths={paginatedPaths} />
 
-      <GlobalInsights balloonData={balloonData} />
+          {/**contains buttons for pagiantion */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-4 px-2">
+              <Button
+                onClick={pagination.goPrev}
+                disabled={!pagination.canGoPrev}
+                variant="outline"
+                size="sm"
+                className="disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Previous</span>
+              </Button>
+
+              <p className="text-xs sm:text-sm text-muted-foreground text-center">
+                Showing <strong>{pagination.startIndex + 1}</strong> –{" "}
+                <strong>{pagination.endIndex}</strong> of{" "}
+                <strong>{balloonPaths.length}</strong>
+              </p>
+
+              <Button
+                onClick={pagination.goNext}
+                disabled={!pagination.canGoNext}
+                variant="outline"
+                size="sm"
+                className="disabled:opacity-50"
+              >
+                <span className="hidden sm:inline mr-1">Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Last updated: {balloonData.metadata.fetchedAt}
+            </p>
+          </div>
+        </div>
+      </>
+      <div className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold">Global Insights</h2>
+        <GlobalInsights balloonData={balloonData} />
+      </div>
     </div>
   );
 }

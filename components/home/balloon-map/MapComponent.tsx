@@ -12,6 +12,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { BalloonTrajectory } from "@/lib/utils/balloonData";
 import { memo } from "react";
+import MapLegend from "./MapLegend";
 
 const MAP_CONFIG = {
   center: [0, 0] as [number, number],
@@ -39,6 +40,13 @@ if (typeof window !== "undefined") {
   });
 }
 
+function getMarkerColor(alt: number): string {
+  if (alt < 5) return "#1F51FF"; //neon blue
+  if (alt < 10) return "#009E60"; //green
+  if (alt < 20) return "	#FFDB58"; //yellow
+  return "#FF3131"; //red
+}
+
 const BalloonTrajectoryLayer = memo(
   ({ balloon }: { balloon: BalloonTrajectory }) => {
     if (!balloon.path.length) return null;
@@ -48,6 +56,19 @@ const BalloonTrajectoryLayer = memo(
     );
 
     const latest = balloon.path[0];
+
+    const color = getMarkerColor(latest.alt);
+
+    const icon = new L.DivIcon({
+      className: "custom-marker",
+      html: `<div style="
+        background:${color};
+        width:10px;
+        height:10px;
+        border-radius:50%;
+        border:1px solid white;
+        "></div>`,
+    });
 
     return (
       <>
@@ -65,7 +86,7 @@ const BalloonTrajectoryLayer = memo(
           </Tooltip>
         </Polyline>
 
-        <Marker position={[latest.lat, latest.lon]}>
+        <Marker position={[latest.lat, latest.lon]} icon={icon}>
           <Tooltip direction="top">
             <div className="text-sm">
               <strong className="text-[var(--app-green)]">
@@ -84,31 +105,33 @@ const BalloonTrajectoryLayer = memo(
   }
 );
 
-BalloonTrajectoryLayer.displayName = "BalloonTrajectoryLayer";
-
 export default function MapComponent({
   balloonPaths,
 }: {
   balloonPaths: BalloonTrajectory[];
 }) {
   return (
-    <MapContainer
-      center={MAP_CONFIG.center}
-      zoom={MAP_CONFIG.zoom}
-      scrollWheelZoom={true}
-      style={{
-        height: MAP_CONFIG.height,
-        width: "100%",
-        borderRadius: MAP_CONFIG.borderRadius,
-      }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      {balloonPaths.map((balloon) => (
-        <BalloonTrajectoryLayer key={balloon.id} balloon={balloon} />
-      ))}
-    </MapContainer>
+    <div className="relative">
+      <MapContainer
+        center={MAP_CONFIG.center}
+        zoom={MAP_CONFIG.zoom}
+        scrollWheelZoom={true}
+        style={{
+          height: MAP_CONFIG.height,
+          width: "100%",
+          borderRadius: MAP_CONFIG.borderRadius,
+        }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {balloonPaths.map((balloon) => (
+          <BalloonTrajectoryLayer key={balloon.id} balloon={balloon} />
+        ))}
+      </MapContainer>
+
+      <MapLegend />
+    </div>
   );
 }

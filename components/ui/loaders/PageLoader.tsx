@@ -1,9 +1,8 @@
 import { LoaderCircle } from "lucide-react";
-import { Skeleton } from "../skeleton";
 
-export function HomePageLoader() {
+export function PageLoader() {
   return (
-    <div className="flex flex-col justify-center h-full">
+    <div className="flex flex-col justify-center h-[100vh] ">
       <div className="text-center flex flex-col gap-3 items-center">
         <LoaderCircle
           className="animate-spin text-[var(--app-green)]"

@@ -12,8 +12,20 @@ import {
 } from "@/lib/utils/balloonData";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Plane, Rabbit, Turtle } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Frown,
+  Plane,
+  Rabbit,
+  RefreshCcw,
+  Turtle,
+} from "lucide-react";
 import BalloonDataCard from "@/components/balloons-overview/BalloonDataCard";
+import { PageLoader } from "@/components/ui/loaders/PageLoader";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function BallonsOverview() {
   const [balloonData, setBalloonData] = useState<BalloonDataResponse | null>(
@@ -44,9 +56,25 @@ export default function BallonsOverview() {
       });
   }, []);
 
-  if (!balloonData) {
-    return <div>No balloon data available :(</div>;
-  }
+  if (loading) return <PageLoader />;
+  if (!balloonData)
+    return (
+      <div className="flex flex-col justify-center h-full">
+        <Card className="flex flex-col items-center gap-3 w-1/2 mx-auto justify-center">
+          <CardHeader>
+            <Frown className="text-[var(--app-green)]" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p>An Unexpected Error Occurred while Fetching the Balloon Data</p>
+            <Button className="w-1/2 mx-auto bg-[var(--app-green)] hover:bg-[var(--app-green)]/85">
+              <Link href={"/"} className="flex items-center gap-3">
+                Refresh <RefreshCcw />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
 
   const { data } = balloonData;
   const balloonPaths = getBalloonTrajectories(data);
@@ -55,13 +83,6 @@ export default function BallonsOverview() {
   const longestDistBalloon = getMaxDistance(balloonPaths);
   const shortestDistBalloon = getMinDistance(balloonPaths);
   const averageDistance = getAverageDist(balloonPaths);
-
-  console.log("Data: ", balloonData);
-  console.log("Trajectories: ", balloonPaths);
-  console.log(
-    "Flattened trajectories: ",
-    balloonPaths.flatMap((t) => t.path)
-  );
 
   return (
     <div className="flex flex-wrap gap-5 justify-between">
