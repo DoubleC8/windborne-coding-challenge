@@ -65,7 +65,7 @@ export async function fetchBalloonData(): Promise<BalloonDataResponse> {
         totalBalloons: 0,
         hoursWithData: 0,
         hoursWithErrors: 24,
-        fetchedAt: new Date().toISOString(),
+        fetchedAt: new Date().toLocaleTimeString(),
         errors: [errorMessage],
       },
     };
@@ -340,3 +340,62 @@ export function getGlobalCoverageStats(trajectories: BalloonTrajectory[]): Globa
     lonRange,
   };
 }
+
+export function getGlobalDrift(trajectories: BalloonTrajectory[]){
+  if(!trajectories || trajectories.length === 0){
+    return{
+      angle: null, 
+      direction: "N/A", 
+      avgDeltaLat: 0, 
+      avgDeltaLon: 0, 
+    }
+  } 
+
+  let totalDeltaLat = 0;
+  let totalDeltaLon = 0;
+  let validCount = 0;
+
+  for(const traj of trajectories){
+    if(traj.path.length < 2) continue;
+
+    const start = traj.path[0];
+    const end = traj.path[traj.path.length - 1];
+
+    const dLat = end.lat - start.lat;
+    const dLon = end.lon - start.lon;
+
+    totalDeltaLat += dLat;
+    totalDeltaLon += dLon;  
+    validCount++;
+  }
+
+  if(validCount === 0){
+    return { angle: null, direction: "N/A", avgDeltaLat: 0, avgDeltaLon: 0 };
+  }
+
+  const avgDeltaLat = totalDeltaLat / validCount;
+  const avgDeltaLon = totalDeltaLon / validCount;
+
+  const angleRad = Math.atan2(avgDeltaLon, avgDeltaLat);
+  const angleDeg = (angleRad * 180) / Math.PI;
+
+  const bearing = (angleDeg + 360) % 360;
+
+  const directions = [
+    "North",
+    "Northeast",
+    "East",
+    "Southeast",
+    "South",
+    "Southwest",
+    "West",
+    "Northwest",
+  ];
+
+  const index = Math.round(bearing / 45) % 8;
+  const direction = directions[index];
+
+  return { angle: bearing, direction, avgDeltaLat, avgDeltaLon };
+}
+
+

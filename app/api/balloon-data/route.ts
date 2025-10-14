@@ -111,7 +111,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<BalloonDat
         totalBalloons,
         hoursWithData,
         hoursWithErrors,
-        fetchedAt: new Date().toISOString(),
+        fetchedAt: new Date().toLocaleTimeString("en-us", { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        }),
         errors: hoursWithErrors > 0 ? errors : undefined,
       },
     };

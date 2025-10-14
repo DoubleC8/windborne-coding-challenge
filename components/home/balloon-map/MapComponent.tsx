@@ -6,12 +6,13 @@ import {
   Polyline,
   TileLayer,
   Tooltip,
+  useMap,
 } from "react-leaflet";
 import L from "leaflet";
 // @ts-expect-error
 import "leaflet/dist/leaflet.css";
-import { BalloonTrajectory } from "@/lib/utils/balloonData";
-import { memo } from "react";
+import { BalloonTrajectory, getGlobalDrift } from "@/lib/utils/balloonData";
+import { memo, useEffect } from "react";
 import MapLegend from "./MapLegend";
 
 const MAP_CONFIG = {
@@ -126,6 +127,7 @@ export default function MapComponent({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
         {balloonPaths.map((balloon) => (
           <BalloonTrajectoryLayer key={balloon.id} balloon={balloon} />
         ))}

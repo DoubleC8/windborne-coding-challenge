@@ -170,9 +170,8 @@ export default function DashboardClient() {
       </>
       <div className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">Global Insights</h2>
-        <GlobalInsights balloonData={balloonData} />
+        <GlobalInsights balloonPaths={balloonPaths} />
       </div>
     </div>
   );
 }
-
