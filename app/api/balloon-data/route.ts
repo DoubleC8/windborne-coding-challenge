@@ -1,83 +1,139 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { BalloonPoint, BalloonDataResponse } from '@/lib/utils/balloonData';
 
-export type BalloonPoint = {
-  lat: number;
-  lon: number;
-  alt: number;
-  hourAgo: number;
-  timestamp: number;
-};
+// Constants
+const WINDBORNE_BASE_URL = 'https://a.windbornesystems.com/treasure';
+const TOTAL_HOURS = 24;
+const HOUR_IN_MS = 60 * 60 * 1000;
 
-export async function GET() {
-  const results: BalloonPoint[][] = [];
-  const now = Date.now();
+// Coordinate validation constants
+const LAT_MIN = -90;
+const LAT_MAX = 90;
+const LON_MIN = -180;
+const LON_MAX = 180;
+
+function isValidCoordinate(value: unknown): value is number {
+  return typeof value === 'number' && !isNaN(value);
+}
+
+function isValidLatitude(lat: number): boolean {
+  return lat >= LAT_MIN && lat <= LAT_MAX;
+}
+
+function isValidLongitude(lon: number): boolean {
+  return lon >= LON_MIN && lon <= LON_MAX;
+}
+
+function isValidBalloonData(arr: unknown): arr is [number, number, number] {
+  return (
+    Array.isArray(arr) &&
+    arr.length >= 3 &&
+    isValidCoordinate(arr[0]) &&
+    isValidCoordinate(arr[1]) &&
+    isValidCoordinate(arr[2]) &&
+    isValidLatitude(arr[0]) &&
+    isValidLongitude(arr[1])
+  );
+}
+
+async function fetchHourData(hourIndex: number): Promise<{ index: number; points: BalloonPoint[]; error?: string }> {
+  const hourStr = hourIndex.toString().padStart(2, '0');
+  const url = `${WINDBORNE_BASE_URL}/${hourStr}.json`;
   
-  const fetchPromises = Array.from({ length: 24 }, async (_, i) => {
-    const hourStr = i.toString().padStart(2, '0');
-    const url = `https://a.windbornesystems.com/treasure/${hourStr}.json`;
-
-    try {
-      const res = await fetch(url, {
-        cache: 'no-store', 
-      });
-      
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const json = await res.json();
-
-      if (!Array.isArray(json)) {
-        throw new Error('Response is not an array');
-      }
-
-      const points: BalloonPoint[] = json
-        .filter((arr: any) => {
-          // Robustly handle corrupted data
-          return Array.isArray(arr) && 
-                 arr.length >= 3 &&
-                 typeof arr[0] === 'number' &&
-                 typeof arr[1] === 'number' &&
-                 typeof arr[2] === 'number' &&
-                 !isNaN(arr[0]) &&
-                 !isNaN(arr[1]) &&
-                 !isNaN(arr[2]) &&
-                 arr[0] >= -90 && arr[0] <= 90 && 
-                 arr[1] >= -180 && arr[1] <= 180; 
-        })
-        .map(([lat, lon, alt]) => ({
-          lat,
-          lon,
-          alt,
-          hourAgo: i,
-          timestamp: now - (i * 60 * 60 * 1000), 
-        }));
-
-      return { index: i, points };
-    } catch (err) {
-      console.warn(`Failed to fetch ${hourStr}.json:`, err);
-      return { index: i, points: [] };
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Windborne-Coding-Challenge/1.0',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-  });
 
-  const fetchedData = await Promise.all(fetchPromises);
-  
-  fetchedData.sort((a, b) => a.index - b.index);
-  fetchedData.forEach(({ points }) => results.push(points));
+    const json: unknown = await res.json();
 
-  const totalPoints = results.flat().length;
-  const totalBalloons = results[0]?.length || 0;
-  const hoursWithData = results.filter(arr => arr.length > 0).length;
+    if (!Array.isArray(json)) {
+      throw new Error('Response is not an array');
+    }
 
+    const now = Date.now();
+    const points: BalloonPoint[] = json
+      .filter(isValidBalloonData)
+      .map(([lat, lon, alt]) => ({
+        lat,
+        lon,
+        alt,
+        hourAgo: hourIndex,
+        timestamp: now - (hourIndex * HOUR_IN_MS),
+      }));
 
-  return NextResponse.json({
-    success: true,
-    data: results,
-    metadata: {
-      totalPoints,
-      totalBalloons,
-      hoursWithData,
-      fetchedAt: new Date().toLocaleTimeString("en-us", { hour: '2-digit', minute: '2-digit' }),
-    },
-  });
+    return { index: hourIndex, points };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    console.warn(`Failed to fetch ${hourStr}.json:`, errorMessage);
+    return { index: hourIndex, points: [], error: errorMessage };
+  }
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse<BalloonDataResponse | { error: string }>> {
+  try {
+    const cacheControl = request.headers.get('cache-control');
+    const shouldCache = cacheControl !== 'no-cache';
+    
+    const fetchPromises = Array.from({ length: TOTAL_HOURS }, (_, i) => fetchHourData(i));
+    const fetchedData = await Promise.all(fetchPromises);
+    
+    // Sort by hour index to maintain chronological order
+    fetchedData.sort((a, b) => a.index - b.index);
+    
+    const results: BalloonPoint[][] = fetchedData.map(({ points }) => points);
+    const errors = fetchedData.filter(({ error }) => error).map(({ index, error }) => `${index}: ${error}`);
+    
+    // Calculate metadata
+    const totalPoints = results.flat().length;
+    const totalBalloons = results[0]?.length || 0;
+    const hoursWithData = results.filter(arr => arr.length > 0).length;
+    const hoursWithErrors = errors.length;
+
+    const response: BalloonDataResponse = {
+      success: hoursWithErrors === 0,
+      data: results,
+      metadata: {
+        totalPoints,
+        totalBalloons,
+        hoursWithData,
+        hoursWithErrors,
+        fetchedAt: new Date().toISOString(),
+        errors: hoursWithErrors > 0 ? errors : undefined,
+      },
+    };
+
+    return NextResponse.json(response, {
+      status: hoursWithErrors === TOTAL_HOURS ? 503 : 200,
+      headers: {
+        'Cache-Control': shouldCache ? 'public, max-age=300, stale-while-revalidate=60' : 'no-cache',
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (error) {
+    console.error('Critical error in balloon data API:', error);
+    
+    return NextResponse.json(
+      { error: 'Internal server error while fetching balloon data' },
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
 }
