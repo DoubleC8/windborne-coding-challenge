@@ -2,54 +2,30 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
+  annotateWithTemperature,
   BalloonDataResponse,
+  BalloonWithTemp,
   fetchBalloonData,
   getBalloonTrajectories,
+  getLatestPoints,
 } from "@/lib/utils/balloonData";
 import { toast } from "sonner";
 import BalloonMap from "./balloon-map/BalloonMap";
 import GlobalInsights from "./global-insights/GlobalInsights";
-import { ChevronLeft, ChevronRight, Frown, RefreshCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader } from "../ui/card";
-import Link from "next/link";
 import { PageLoader } from "../ui/loaders/PageLoader";
+import { ErrorState } from "../ui/error-state";
+import { usePagination } from "@/hooks/use-pagination";
 
 const BALLOONS_PER_PAGE = 200;
-
-function usePagination(totalItems: number, itemsPerPage: number) {
-  const [page, setPage] = useState(0);
-
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const canGoNext = page < totalPages - 1;
-  const canGoPrev = page > 0;
-
-  const goNext = useCallback(() => {
-    if (canGoNext) setPage((p) => p + 1);
-  }, [canGoNext]);
-
-  const goPrev = useCallback(() => {
-    if (canGoPrev) setPage((p) => p - 1);
-  }, [canGoPrev]);
-
-  const reset = useCallback(() => setPage(0), []);
-
-  return {
-    page,
-    canGoNext,
-    canGoPrev,
-    goNext,
-    goPrev,
-    reset,
-    startIndex: page * itemsPerPage,
-    endIndex: Math.min((page + 1) * itemsPerPage, totalItems),
-  };
-}
 
 export default function DashboardClient() {
   const [balloonData, setBalloonData] = useState<BalloonDataResponse | null>(
     null
   );
+  const [annotatedPoints, setAnnotatedPoints] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,8 +35,27 @@ export default function DashboardClient() {
 
     try {
       const data = await fetchBalloonData();
-
       setBalloonData(data);
+
+      const balloonPaths = getBalloonTrajectories(data.data);
+      const latestPoints = getLatestPoints(balloonPaths);
+
+      const pointsWithTemp = await annotateWithTemperature(latestPoints);
+      setAnnotatedPoints(pointsWithTemp);
+
+      await fetch("/api/surface-temps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          points: [
+            { lat: 37.7749, lon: -122.4194 }, // San Francisco
+            { lat: 40.7128, lon: -74.006 }, // New York
+            { lat: 48.8566, lon: 2.3522 }, // Paris
+          ],
+        }),
+      })
+        .then((r) => r.json())
+        .then(console.log);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load balloon data";
@@ -76,9 +71,9 @@ export default function DashboardClient() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 600000);
+    const interval = setInterval(fetchData, 600000); // 10 minutes
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
 
   const balloonPaths = balloonData
     ? getBalloonTrajectories(balloonData.data)
@@ -93,81 +88,58 @@ export default function DashboardClient() {
 
   if (loading) return <PageLoader />;
   if (error || !balloonData)
-    return (
-      <div className="flex flex-col justify-center h-full">
-        <Card className="flex flex-col items-center gap-3 w-1/2 mx-auto justify-center">
-          <CardHeader>
-            <Frown className="text-[var(--app-green)]" />
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <p>
-              An Unexpected Error Occurred while Fetching the Balloon Data:{" "}
-              {error}
-            </p>
-            <Button className="w-1/2 mx-auto bg-[var(--app-green)] hover:bg-[var(--app-green)]/85">
-              <Link href={"/"} className="flex items-center gap-3">
-                Refresh <RefreshCcw />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <ErrorState error={error || "No data available"} />;
 
   return (
     <div className="flex flex-col gap-3 justify-center h-full">
-      {/**contains balloon map */}
-      <>
+      {/* Balloon Map Section */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold">Balloon Map</h2>
+        <p className="text-sm text-muted-foreground">
+          Tracking{" "}
+          <strong className="text-[var(--app-green)] text-lg">
+            {balloonData.metadata.totalBalloons.toLocaleString()}
+          </strong>{" "}
+          balloons worldwide.
+        </p>
+        <BalloonMap balloonPaths={paginatedPaths} />
+
+        {/* Pagination Controls */}
         <div className="flex flex-col gap-3">
-          <h2 className="text-xl font-bold">Balloon Map</h2>
-
-          <p className="text-sm text-muted-foreground">
-            Tracking{" "}
-            <strong className="text-[var(--app-green)] text-lg">
-              {balloonData.metadata.totalBalloons.toLocaleString()}
-            </strong>{" "}
-            balloons worldwide.
-          </p>
-
-          <BalloonMap balloonPaths={paginatedPaths} />
-
-          {/**contains buttons for pagiantion */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-4 px-2">
-              <Button
-                onClick={pagination.goPrev}
-                disabled={!pagination.canGoPrev}
-                variant="outline"
-                size="sm"
-                className="disabled:opacity-50"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Previous</span>
-              </Button>
-
-              <p className="text-xs sm:text-sm text-muted-foreground text-center">
-                Showing <strong>{pagination.startIndex + 1}</strong> –{" "}
-                <strong>{pagination.endIndex}</strong> of{" "}
-                <strong>{balloonPaths.length}</strong>
-              </p>
-
-              <Button
-                onClick={pagination.goNext}
-                disabled={!pagination.canGoNext}
-                variant="outline"
-                size="sm"
-                className="disabled:opacity-50"
-              >
-                <span className="hidden sm:inline mr-1">Next</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Last updated: {balloonData.metadata.fetchedAt}
+          <div className="flex items-center justify-between gap-4 px-2">
+            <Button
+              onClick={pagination.goPrev}
+              disabled={!pagination.canGoPrev}
+              variant="outline"
+              size="sm"
+              className="disabled:opacity-50"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Previous</span>
+            </Button>
+            <p className="text-xs sm:text-sm text-muted-foreground text-center">
+              Showing <strong>{pagination.startIndex + 1}</strong> –{" "}
+              <strong>{pagination.endIndex}</strong> of{" "}
+              <strong>{balloonPaths.length}</strong>
             </p>
+            <Button
+              onClick={pagination.goNext}
+              disabled={!pagination.canGoNext}
+              variant="outline"
+              size="sm"
+              className="disabled:opacity-50"
+            >
+              <span className="hidden sm:inline mr-1">Next</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
+          <p className="text-xs text-muted-foreground text-center">
+            Last updated: {balloonData.metadata.fetchedAt}
+          </p>
         </div>
-      </>
+      </div>
+
+      {/* Global Insights Section */}
       <div className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">Global Insights</h2>
         <GlobalInsights balloonPaths={balloonPaths} />

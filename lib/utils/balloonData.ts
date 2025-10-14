@@ -26,19 +26,14 @@ export type BalloonTrajectory = {
 
 export async function fetchBalloonData(): Promise<BalloonDataResponse> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
     const res = await fetch('/api/balloon-data', {
       cache: 'no-store',
-      signal: controller.signal,
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     });
-
-    clearTimeout(timeoutId);
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => 'Unknown error');
@@ -69,6 +64,42 @@ export async function fetchBalloonData(): Promise<BalloonDataResponse> {
         errors: [errorMessage],
       },
     };
+  }
+}
+
+export type BalloonWithTemp = BalloonPoint & { temperatureC: number | null };
+
+export async function annotateWithTemperature(points: BalloonPoint[]): Promise<BalloonWithTemp[]>{
+  try {
+  
+    const res = await fetch("/api/surface-temps", {
+      method: "POST", 
+      headers: { "Content-Type": "application/json"},
+      body: JSON.stringify({ points })
+    });
+
+    if (!res.ok) {
+      console.error(`Surface temperature API error: ${res.status} ${res.statusText}`);
+      return points.map(p => ({...p, temperatureC: null}));
+    }
+
+    const data = await res.json();
+    console.log("Temperature API response:", data);
+    
+    const { results } = data;
+
+    if (!Array.isArray(results)) {
+      console.error("Invalid results format from temperature API");
+      return points.map(p => ({...p, temperatureC: null}));
+    }
+
+    return points.map(p => {
+      const temp = results.find((r: any) => r.lat === p.lat && r.lon === p.lon)?.temperatureC ?? null;
+      return {...p, temperatureC: temp};
+    });
+  } catch (error) {
+    console.error("Error in annotateWithTemperature:", error);
+    return points.map(p => ({...p, temperatureC: null}));
   }
 }
 
@@ -398,4 +429,10 @@ export function getGlobalDrift(trajectories: BalloonTrajectory[]){
   return { angle: bearing, direction, avgDeltaLat, avgDeltaLon };
 }
 
+export function getLatestPoints(trajectories: BalloonTrajectory[]): BalloonPoint[] {
+  if(!Array.isArray(trajectories) || trajectories.length === 0){
+    return [];
+  }
+  return trajectories?.map(t => t.path[0]).filter(Boolean) ?? [];
+}
 

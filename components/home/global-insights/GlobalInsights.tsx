@@ -12,7 +12,7 @@ export default function GlobalInsights({
   const drift = getGlobalDrift(balloonPaths);
 
   return (
-    <Card className="w-1/3 gap-3">
+    <Card className="md:w-1/3 gap-3">
       <CardHeader>
         <div className="flex flex-col items-center gap-3">
           <Compass className="text-[var(--app-green)]" />

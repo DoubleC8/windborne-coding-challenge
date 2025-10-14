@@ -6,13 +6,12 @@ import {
   Polyline,
   TileLayer,
   Tooltip,
-  useMap,
 } from "react-leaflet";
 import L from "leaflet";
 // @ts-expect-error
 import "leaflet/dist/leaflet.css";
-import { BalloonTrajectory, getGlobalDrift } from "@/lib/utils/balloonData";
-import { memo, useEffect } from "react";
+import { BalloonTrajectory } from "@/lib/utils/balloonData";
+import { memo } from "react";
 import MapLegend from "./MapLegend";
 
 const MAP_CONFIG = {
