@@ -28,3 +28,4 @@ export function usePagination(totalItems: number, itemsPerPage: number) {
     endIndex: Math.min((page + 1) * itemsPerPage, totalItems),
   };
 }
+

@@ -20,13 +20,13 @@ export type BalloonDataResponse = {
 };
 
 export type BalloonTrajectory = {
-    id: number;
-    path: BalloonPoint[];
+  id: number;
+  path: BalloonPoint[];
 }
 
 export async function fetchBalloonData(): Promise<BalloonDataResponse> {
   try {
-    
+
     const res = await fetch('/api/balloon-data', {
       cache: 'no-store',
       headers: {
@@ -41,17 +41,17 @@ export async function fetchBalloonData(): Promise<BalloonDataResponse> {
     }
 
     const data: BalloonDataResponse = await res.json();
-    
+
     // Validate response structure
     if (!data || typeof data.success !== 'boolean' || !Array.isArray(data.data)) {
       throw new Error('Invalid response format from API');
     }
-    
+
     return data;
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('Failed to fetch balloon data:', errorMessage);
-    
+
     return {
       success: false,
       data: Array(24).fill([]),
@@ -69,71 +69,52 @@ export async function fetchBalloonData(): Promise<BalloonDataResponse> {
 
 export type BalloonWithTemp = BalloonPoint & { temperatureC: number | null };
 
-export async function annotateWithTemperature(points: BalloonPoint[]): Promise<BalloonWithTemp[]>{
-  try {
-  
-    const res = await fetch("/api/surface-temps", {
-      method: "POST", 
-      headers: { "Content-Type": "application/json"},
-      body: JSON.stringify({ points })
-    });
+export async function annotateWithTemperature(points: BalloonPoint[]): Promise<BalloonWithTemp[]> {
+  const res = await fetch("/api/surface-temps", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ points })
+  });
 
-    if (!res.ok) {
-      console.error(`Surface temperature API error: ${res.status} ${res.statusText}`);
-      return points.map(p => ({...p, temperatureC: null}));
-    }
+  const { results } = await res.json();
 
-    const data = await res.json();
-    console.log("Temperature API response:", data);
-    
-    const { results } = data;
-
-    if (!Array.isArray(results)) {
-      console.error("Invalid results format from temperature API");
-      return points.map(p => ({...p, temperatureC: null}));
-    }
-
-    return points.map(p => {
-      const temp = results.find((r: any) => r.lat === p.lat && r.lon === p.lon)?.temperatureC ?? null;
-      return {...p, temperatureC: temp};
-    });
-  } catch (error) {
-    console.error("Error in annotateWithTemperature:", error);
-    return points.map(p => ({...p, temperatureC: null}));
-  }
+  return points.map(p => {
+    const temp = results.find((r: any) => r.lat === p.lat && r.lon === p.lon)?.temperatureC ?? null;
+    return { ...p, temperatureC: temp };
+  })
 }
 
 export function getBalloonTrajectories(data: BalloonPoint[][]): BalloonTrajectory[] {
-    if (!data || data.length === 0) {
-        return [];
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Find the maximum number of balloons across all hours
+  const maxBalloons = Math.max(...data.map(hour => hour.length), 0);
+
+  if (maxBalloons === 0) {
+    return [];
+  }
+
+  const trajectories: BalloonTrajectory[] = [];
+
+  for (let i = 0; i < maxBalloons; i++) {
+    const path: BalloonPoint[] = [];
+
+    for (let hour = 0; hour < data.length; hour++) {
+      const hourData = data[hour];
+      if (hourData && hourData[i]) {
+        path.push(hourData[i]);
+      }
     }
 
-    // Find the maximum number of balloons across all hours
-    const maxBalloons = Math.max(...data.map(hour => hour.length), 0);
-
-    if (maxBalloons === 0) {
-        return [];
+    // Only include trajectories with at least 2 points for meaningful analysis
+    if (path.length >= 2) {
+      trajectories.push({ id: i, path });
     }
+  }
 
-    const trajectories: BalloonTrajectory[] = [];
-
-    for (let i = 0; i < maxBalloons; i++) {
-        const path: BalloonPoint[] = [];
-
-        for (let hour = 0; hour < data.length; hour++) {
-            const hourData = data[hour];
-            if (hourData && hourData[i]) {
-                path.push(hourData[i]);
-            }
-        }
-
-        // Only include trajectories with at least 2 points for meaningful analysis
-        if (path.length >= 2) {
-            trajectories.push({ id: i, path });
-        }
-    }
-
-    return trajectories;
+  return trajectories;
 }
 
 export function getAverageDist(trajectories: BalloonTrajectory[]): number {
@@ -270,7 +251,7 @@ export function calculateTotalDistance(path: BalloonPoint[]): number {
   for (let i = 0; i < path.length - 1; i++) {
     const p1 = path[i];
     const p2 = path[i + 1];
-    
+
     if (p1 && p2) {
       total += getDistance(p1.lat, p1.lon, p2.lat, p2.lon);
     }
@@ -284,8 +265,8 @@ const EARTH_RADIUS_KM = 6371;
 
 export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   // Input validation
-  if (!isValidCoordinate(lat1) || !isValidCoordinate(lon1) || 
-      !isValidCoordinate(lat2) || !isValidCoordinate(lon2)) {
+  if (!isValidCoordinate(lat1) || !isValidCoordinate(lon1) ||
+    !isValidCoordinate(lat2) || !isValidCoordinate(lon2)) {
     return 0;
   }
 
@@ -298,13 +279,13 @@ export function getDistance(lat1: number, lon1: number, lat2: number, lon2: numb
   const phi2 = toRad(lat2);
 
   // Haversine formula
-  const a = Math.sin(distLatRad / 2) * Math.sin(distLatRad / 2) + 
-            Math.cos(phi1) * Math.cos(phi2) * 
-            Math.sin(distLonRad / 2) * Math.sin(distLonRad / 2);
+  const a = Math.sin(distLatRad / 2) * Math.sin(distLatRad / 2) +
+    Math.cos(phi1) * Math.cos(phi2) *
+    Math.sin(distLonRad / 2) * Math.sin(distLonRad / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = EARTH_RADIUS_KM * c;
-  
+
   return distance;
 }
 
@@ -372,22 +353,22 @@ export function getGlobalCoverageStats(trajectories: BalloonTrajectory[]): Globa
   };
 }
 
-export function getGlobalDrift(trajectories: BalloonTrajectory[]){
-  if(!trajectories || trajectories.length === 0){
-    return{
-      angle: null, 
-      direction: "N/A", 
-      avgDeltaLat: 0, 
-      avgDeltaLon: 0, 
+export function getGlobalDrift(trajectories: BalloonTrajectory[]) {
+  if (!trajectories || trajectories.length === 0) {
+    return {
+      angle: null,
+      direction: "N/A",
+      avgDeltaLat: 0,
+      avgDeltaLon: 0,
     }
-  } 
+  }
 
   let totalDeltaLat = 0;
   let totalDeltaLon = 0;
   let validCount = 0;
 
-  for(const traj of trajectories){
-    if(traj.path.length < 2) continue;
+  for (const traj of trajectories) {
+    if (traj.path.length < 2) continue;
 
     const start = traj.path[0];
     const end = traj.path[traj.path.length - 1];
@@ -396,11 +377,11 @@ export function getGlobalDrift(trajectories: BalloonTrajectory[]){
     const dLon = end.lon - start.lon;
 
     totalDeltaLat += dLat;
-    totalDeltaLon += dLon;  
+    totalDeltaLon += dLon;
     validCount++;
   }
 
-  if(validCount === 0){
+  if (validCount === 0) {
     return { angle: null, direction: "N/A", avgDeltaLat: 0, avgDeltaLon: 0 };
   }
 
@@ -430,7 +411,7 @@ export function getGlobalDrift(trajectories: BalloonTrajectory[]){
 }
 
 export function getLatestPoints(trajectories: BalloonTrajectory[]): BalloonPoint[] {
-  if(!Array.isArray(trajectories) || trajectories.length === 0){
+  if (!Array.isArray(trajectories) || trajectories.length === 0) {
     return [];
   }
   return trajectories?.map(t => t.path[0]).filter(Boolean) ?? [];

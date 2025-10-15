@@ -29,3 +29,4 @@ export function ErrorState({ error }: ErrorStateProps) {
     </div>
   );
 }
+
