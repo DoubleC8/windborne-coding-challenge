@@ -4,11 +4,10 @@ type Point = { lat: number; lon: number };
 type TempResult = Point & { temperatureC: number | null };
 type CacheEntry = { data: TempResult; expires: number };
 
-// used for caching data
+
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const cache = new Map<string, CacheEntry>();
 
-// used to limit api calls to stay within the limit
 const BATCH_SIZE = 5;
 const DELAY_MS = 600;
 
@@ -20,13 +19,13 @@ async function fetchTemperature(p: Point): Promise<FetchResult> {
   const key = `${p.lat.toFixed(3)},${p.lon.toFixed(3)}`;
   const cached = cache.get(key);
 
-  //Return cached result instantly
+
   if (cached && cached.expires > Date.now()) {
     console.log(`Using cached data for ${key}`);
     return { result: cached.data, fromCache: true };
   }
 
-  // Fetch from API if data was not in the cache
+
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m&timezone=auto`;
     const res = await fetch(url, { cache: "no-store" });
@@ -57,6 +56,7 @@ async function fetchTemperature(p: Point): Promise<FetchResult> {
   }
 }
 
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
@@ -83,7 +83,6 @@ export async function POST(request: Request) {
 
       results.push(...batchResults.map((r) => r.result));
 
-      // Only delay if we actually hit the API
       const isLastBatch = i + BATCH_SIZE >= totalPoints;
       if (!isLastBatch && hadApiCalls) {
         console.log(

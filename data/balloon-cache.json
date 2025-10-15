@@ -1,0 +1,42 @@
+{
+  "data": {
+    "success": false,
+    "data": [
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ],
+    "metadata": {
+      "totalPoints": 0,
+      "totalBalloons": 0,
+      "hoursWithData": 0,
+      "hoursWithErrors": 24,
+      "fetchedAt": "12:38:33 PM",
+      "errors": [
+        "Failed to parse URL from /api/balloon-data"
+      ]
+    }
+  },
+  "timestamp": 1760557113831
+}

@@ -39,9 +39,7 @@ export default function DashboardClient() {
       const balloonPaths = getBalloonTrajectories(data.data);
       const latestPoints = getLatestPoints(balloonPaths);
 
-      const pointsWithTemp = await annotateWithTemperature(
-        latestPoints.slice(0, 10)
-      );
+      const pointsWithTemp = await annotateWithTemperature(latestPoints);
       setAnnotatedPoints(pointsWithTemp);
     } catch (err) {
       const errorMessage =
