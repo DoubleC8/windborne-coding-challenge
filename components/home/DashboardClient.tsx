@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import {
   annotateWithTemperature,
   BalloonDataResponse,
-  BalloonWithTemp,
   fetchBalloonData,
   getBalloonTrajectories,
   getLatestPoints,
@@ -40,22 +39,10 @@ export default function DashboardClient() {
       const balloonPaths = getBalloonTrajectories(data.data);
       const latestPoints = getLatestPoints(balloonPaths);
 
-      const pointsWithTemp = await annotateWithTemperature(latestPoints);
+      const pointsWithTemp = await annotateWithTemperature(
+        latestPoints.slice(0, 10)
+      );
       setAnnotatedPoints(pointsWithTemp);
-
-      await fetch("/api/surface-temps", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          points: [
-            { lat: 37.7749, lon: -122.4194 }, // San Francisco
-            { lat: 40.7128, lon: -74.006 }, // New York
-            { lat: 48.8566, lon: 2.3522 }, // Paris
-          ],
-        }),
-      })
-        .then((r) => r.json())
-        .then(console.log);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load balloon data";
