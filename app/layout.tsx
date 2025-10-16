@@ -4,7 +4,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 // @ts-expect-error
 import "./globals.css";
 import { Toaster } from "sonner";
-import { AppSidebar } from "@/components/ui/app-sidebar";
+
 // @ts-expect-error
 import "leaflet/dist/leaflet.css";
 
@@ -31,21 +31,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased p-3`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider>
-          <AppSidebar />
-          <main className="w-full flex gap-3">
-            <SidebarTrigger className="text-[var(--app-green)]" />
-            <div className="w-full flex flex-col gap-3">
-              <h1 className="text-2xl font-extrabold text-center text-[var(--app-green)]">
-                WindBorne Engineering Challenge
-              </h1>
-              {children}
-            </div>
-            <Toaster richColors={true} position="top-right" />
-          </main>
-        </SidebarProvider>
+        {children}
+        <Toaster richColors={true} position="top-right" expand={true} />
       </body>
     </html>
   );

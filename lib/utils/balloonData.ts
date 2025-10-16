@@ -191,12 +191,13 @@ export function getMinAltitude(trajectories: BalloonTrajectory[]): AltitudeExtre
 
 export type DistanceExtreme = {
   balloon: BalloonTrajectory | null;
+  balloonId: number,
   distance: number;
 };
 
 export function getMaxDistance(trajectories: BalloonTrajectory[]): DistanceExtreme {
   if (!trajectories || trajectories.length === 0) {
-    return { balloon: null, distance: 0 };
+    return { balloon: null, balloonId: 0, distance: 0 };
   }
 
   let maxDistance = 0;
@@ -213,13 +214,14 @@ export function getMaxDistance(trajectories: BalloonTrajectory[]): DistanceExtre
 
   return {
     balloon: longestBalloon,
+    balloonId: longestBalloon?.id ?? 0,
     distance: maxDistance,
   };
 }
 
 export function getMinDistance(trajectories: BalloonTrajectory[]): DistanceExtreme {
   if (!trajectories || trajectories.length === 0) {
-    return { balloon: null, distance: 0 };
+    return { balloon: null, balloonId: 0, distance: 0 };
   }
 
   let minDistance = Infinity;
@@ -236,6 +238,7 @@ export function getMinDistance(trajectories: BalloonTrajectory[]): DistanceExtre
 
   return {
     balloon: shortestBalloon,
+    balloonId: shortestBalloon?.id ?? 0,
     distance: minDistance === Infinity ? 0 : minDistance,
   };
 }
@@ -417,3 +420,257 @@ export function getLatestPoints(trajectories: BalloonTrajectory[]): BalloonPoint
   return trajectories?.map(t => t.path[0]).filter(Boolean) ?? [];
 }
 
+// Fun Facts Functions
+
+export type SpeedExtreme = {
+  balloonId: number;
+  averageSpeed: number; // km/h
+  totalDistance: number;
+  totalTime: number; // hours
+};
+
+export function getFastestBalloon(trajectories: BalloonTrajectory[]): SpeedExtreme {
+  if (!trajectories || trajectories.length === 0) {
+    return { balloonId: 0, averageSpeed: 0, totalDistance: 0, totalTime: 0 };
+  }
+
+  let fastestBalloon: BalloonTrajectory | null = null;
+  let highestSpeed = 0;
+
+  for (const traj of trajectories) {
+    if (traj.path.length < 2) continue;
+
+    const totalDistance = calculateTotalDistance(traj.path);
+    const startTime = traj.path[traj.path.length - 1].timestamp; // Oldest point
+    const endTime = traj.path[0].timestamp; // Newest point
+    const totalTimeHours = (endTime - startTime) / (1000 * 60 * 60); // Convert ms to hours
+
+    if (totalTimeHours > 0) {
+      const averageSpeed = totalDistance / totalTimeHours;
+      if (averageSpeed > highestSpeed) {
+        highestSpeed = averageSpeed;
+        fastestBalloon = traj;
+      }
+    }
+  }
+
+  return {
+    balloonId: fastestBalloon?.id ?? 0,
+    averageSpeed: highestSpeed,
+    totalDistance: fastestBalloon ? calculateTotalDistance(fastestBalloon.path) : 0,
+    totalTime: fastestBalloon ? (fastestBalloon.path[0].timestamp - fastestBalloon.path[fastestBalloon.path.length - 1].timestamp) / (1000 * 60 * 60) : 0,
+  };
+}
+
+export type AltitudeRangeExtreme = {
+  balloonId: number;
+  altitudeRange: number; // km
+  maxAltitude: number;
+  minAltitude: number;
+};
+
+export function getAltitudeExplorer(trajectories: BalloonTrajectory[]): AltitudeRangeExtreme {
+  if (!trajectories || trajectories.length === 0) {
+    return { balloonId: 0, altitudeRange: 0, maxAltitude: 0, minAltitude: 0 };
+  }
+
+  let explorerBalloon: BalloonTrajectory | null = null;
+  let biggestRange = 0;
+
+  for (const traj of trajectories) {
+    if (traj.path.length === 0) continue;
+
+    const altitudes = traj.path.map(p => p.alt);
+    const maxAlt = Math.max(...altitudes);
+    const minAlt = Math.min(...altitudes);
+    const range = maxAlt - minAlt;
+
+    if (range > biggestRange) {
+      biggestRange = range;
+      explorerBalloon = traj;
+    }
+  }
+
+  if (!explorerBalloon) {
+    return { balloonId: 0, altitudeRange: 0, maxAltitude: 0, minAltitude: 0 };
+  }
+
+  const altitudes = explorerBalloon.path.map(p => p.alt);
+  return {
+    balloonId: explorerBalloon.id,
+    altitudeRange: biggestRange,
+    maxAltitude: Math.max(...altitudes),
+    minAltitude: Math.min(...altitudes),
+  };
+}
+
+export type DirectionConsistency = {
+  balloonId: number;
+  directionConsistency: number; // percentage (0-100)
+  totalDirectionChanges: number;
+  averageDirectionChange: number; // degrees
+};
+
+export function getMrConsistent(trajectories: BalloonTrajectory[]): DirectionConsistency {
+  if (!trajectories || trajectories.length === 0) {
+    return { balloonId: 0, directionConsistency: 0, totalDirectionChanges: 0, averageDirectionChange: 0 };
+  }
+
+  let directionMaster: BalloonTrajectory | null = null;
+  let bestConsistency = 0;
+
+  for (const traj of trajectories) {
+    if (traj.path.length < 3) continue; // Need at least 3 points to calculate direction changes
+
+    let totalDirectionChange = 0;
+    let directionChanges = 0;
+
+    for (let i = 1; i < traj.path.length - 1; i++) {
+      const prev = traj.path[i + 1]; // Previous point
+      const curr = traj.path[i];     // Current point
+      const next = traj.path[i - 1]; // Next point
+
+      // Calculate bearing from prev to curr
+      const bearing1 = calculateBearing(prev.lat, prev.lon, curr.lat, curr.lon);
+      // Calculate bearing from curr to next
+      const bearing2 = calculateBearing(curr.lat, curr.lon, next.lat, next.lon);
+
+      // Calculate the difference in bearings
+      let bearingDiff = Math.abs(bearing2 - bearing1);
+      if (bearingDiff > 180) {
+        bearingDiff = 360 - bearingDiff;
+      }
+
+      totalDirectionChange += bearingDiff;
+      directionChanges++;
+    }
+
+    if (directionChanges > 0) {
+      const averageDirectionChange = totalDirectionChange / directionChanges;
+      // Consistency is inverse of average direction change (lower change = higher consistency)
+      const consistency = Math.max(0, 100 - (averageDirectionChange / 180) * 100);
+
+      if (consistency > bestConsistency) {
+        bestConsistency = consistency;
+        directionMaster = traj;
+      }
+    }
+  }
+
+  if (!directionMaster) {
+    return { balloonId: 0, directionConsistency: 0, totalDirectionChanges: 0, averageDirectionChange: 0 };
+  }
+
+  // Recalculate for the best balloon
+  let totalDirectionChange = 0;
+  let directionChanges = 0;
+
+  for (let i = 1; i < directionMaster.path.length - 1; i++) {
+    const prev = directionMaster.path[i + 1];
+    const curr = directionMaster.path[i];
+    const next = directionMaster.path[i - 1];
+
+    const bearing1 = calculateBearing(prev.lat, prev.lon, curr.lat, curr.lon);
+    const bearing2 = calculateBearing(curr.lat, curr.lon, next.lat, next.lon);
+
+    let bearingDiff = Math.abs(bearing2 - bearing1);
+    if (bearingDiff > 180) {
+      bearingDiff = 360 - bearingDiff;
+    }
+
+    totalDirectionChange += bearingDiff;
+    directionChanges++;
+  }
+
+  return {
+    balloonId: directionMaster.id,
+    directionConsistency: bestConsistency,
+    totalDirectionChanges: directionChanges,
+    averageDirectionChange: directionChanges > 0 ? totalDirectionChange / directionChanges : 0,
+  };
+}
+
+// Helper function to calculate bearing between two points
+function calculateBearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (deg: number) => deg * (Math.PI / 180);
+  const toDeg = (rad: number) => rad * (180 / Math.PI);
+
+  const dLon = toRad(lon2 - lon1);
+  const lat1Rad = toRad(lat1);
+  const lat2Rad = toRad(lat2);
+
+  const y = Math.sin(dLon) * Math.cos(lat2Rad);
+  const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+
+  let bearing = toDeg(Math.atan2(y, x));
+  return (bearing + 360) % 360;
+}
+
+export type EverestComparison = {
+  totalBalloons: number;
+  aboveEverest: number;
+  percentage: number;
+  everestHeight: number; // km
+};
+
+export function getEverestComparison(trajectories: BalloonTrajectory[]): EverestComparison {
+  if (!trajectories || trajectories.length === 0) {
+    return { totalBalloons: 0, aboveEverest: 0, percentage: 0, everestHeight: 8.849 };
+  }
+
+  const EVEREST_HEIGHT_KM = 8.849; // Mount Everest height in kilometers
+  let aboveEverestCount = 0;
+
+  for (const traj of trajectories) {
+    const maxAltitude = Math.max(...traj.path.map(p => p.alt));
+    if (maxAltitude > EVEREST_HEIGHT_KM) {
+      aboveEverestCount++;
+    }
+  }
+
+  return {
+    totalBalloons: trajectories.length,
+    aboveEverest: aboveEverestCount,
+    percentage: trajectories.length > 0 ? (aboveEverestCount / trajectories.length) * 100 : 0,
+    everestHeight: EVEREST_HEIGHT_KM,
+  };
+}
+
+export type PointWithTemp = {
+  alt: number;
+  temperatureC: number | null;
+};
+
+//computes the best-fit line that describes how temperature changes with altitude.
+export function computeTempTrend(points: PointWithTemp[]) {
+  // Filter out points that are null or missing temperature
+  const valid = points.filter(
+    (p): p is { alt: number; temperatureC: number } =>
+      typeof p.alt === "number" && typeof p.temperatureC === "number"
+  );
+
+  if (valid.length === 0) return null; 
+
+  //getting x and y coords array
+  const xs = valid.map(p => p.alt);   // xs = [1.2, 2.3, 3.5, ...]  altitudes (km)
+  const ys = valid.map(p => p.temperatureC);  // ys = [15.6, 12.1, 7.8, ...] temperatures (°C)
+
+  const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+  const mx = mean(xs);
+  const my = mean(ys);
+
+  const numerator = xs.reduce((acc, x, i) => acc + (x - mx) * (ys[i] - my), 0);
+  const denominator = xs.reduce((acc, x) => acc + (x - mx) ** 2, 0);
+
+  const slope = numerator / denominator;
+  const intercept = my - slope * mx;
+
+  const ssTot = ys.reduce((acc, y) => acc + (y - my) ** 2, 0);
+  const ssRes = ys.reduce(
+    (acc, y, i) => acc + (y - (slope * xs[i] + intercept)) ** 2,
+    0
+  );
+  const r2 = 1 - ssRes / ssTot;
+
+  return { slope, intercept, r2, n: valid.length };
+}

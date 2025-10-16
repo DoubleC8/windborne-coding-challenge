@@ -2,11 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  annotateWithTemperature,
   BalloonDataResponse,
   fetchBalloonData,
   getBalloonTrajectories,
-  getLatestPoints,
 } from "@/lib/utils/balloonData";
 import { toast } from "sonner";
 import BalloonMap from "./balloon-map/BalloonMap";
@@ -16,6 +14,7 @@ import { Button } from "../ui/button";
 import { PageLoader } from "../ui/loaders/PageLoader";
 import { ErrorState } from "../ui/error-state";
 import { usePagination } from "@/hooks/use-pagination";
+import BallonsOverview from "./balloons-overview/BalloonsOverview";
 
 const BALLOONS_PER_PAGE = 200;
 
@@ -23,7 +22,6 @@ export default function DashboardClient() {
   const [balloonData, setBalloonData] = useState<BalloonDataResponse | null>(
     null
   );
-  const [annotatedPoints, setAnnotatedPoints] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +33,13 @@ export default function DashboardClient() {
     try {
       const data = await fetchBalloonData();
       setBalloonData(data);
-
-      const balloonPaths = getBalloonTrajectories(data.data);
-      const latestPoints = getLatestPoints(balloonPaths);
-
-      const pointsWithTemp = await annotateWithTemperature(latestPoints);
-      setAnnotatedPoints(pointsWithTemp);
+      toast.success("Successfully Fetched Balloon Data from Windborne.", {
+        description: `At ${new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })}`,
+      });
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load balloon data";
@@ -76,7 +75,7 @@ export default function DashboardClient() {
     return <ErrorState error={error || "No data available"} />;
 
   return (
-    <div className="flex flex-col gap-3 justify-center h-full">
+    <div className="flex flex-col gap-5 justify-center h-full">
       {/* Balloon Map Section */}
       <div className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">Balloon Map</h2>
@@ -90,45 +89,46 @@ export default function DashboardClient() {
         <BalloonMap balloonPaths={paginatedPaths} />
 
         {/* Pagination Controls */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4 px-2">
-            <Button
-              onClick={pagination.goPrev}
-              disabled={!pagination.canGoPrev}
-              variant="outline"
-              size="sm"
-              className="disabled:opacity-50"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Previous</span>
-            </Button>
+
+        <div className="flex items-center justify-between gap-4 px-2">
+          <Button
+            onClick={pagination.goPrev}
+            disabled={!pagination.canGoPrev}
+            variant="outline"
+            size="sm"
+            className="disabled:opacity-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline ml-1">Previous</span>
+          </Button>
+          <div className="flex flex-col gap-3">
             <p className="text-xs sm:text-sm text-muted-foreground text-center">
               Showing <strong>{pagination.startIndex + 1}</strong> –{" "}
               <strong>{pagination.endIndex}</strong> of{" "}
               <strong>{balloonPaths.length}</strong>
             </p>
-            <Button
-              onClick={pagination.goNext}
-              disabled={!pagination.canGoNext}
-              variant="outline"
-              size="sm"
-              className="disabled:opacity-50"
-            >
-              <span className="hidden sm:inline mr-1">Next</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Last updated: {balloonData.metadata.fetchedAt}
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground text-center">
-            Last updated: {balloonData.metadata.fetchedAt}
-          </p>
+
+          <Button
+            onClick={pagination.goNext}
+            disabled={!pagination.canGoNext}
+            variant="outline"
+            size="sm"
+            className="disabled:opacity-50"
+          >
+            <span className="hidden sm:inline mr-1">Next</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
       {/* Global Insights Section */}
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold">Global Insights</h2>
-        <GlobalInsights balloonPaths={balloonPaths} />
-      </div>
+      <GlobalInsights balloonPaths={balloonPaths} />
+
+      <BallonsOverview balloonData={balloonData} />
     </div>
   );
 }
