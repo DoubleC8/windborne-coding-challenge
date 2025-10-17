@@ -79,7 +79,7 @@ export async function annotateWithTemperature(points: BalloonPoint[]): Promise<B
   const { results } = await res.json();
 
   return points.map(p => {
-    const temp = results.find((r: any) => r.lat === p.lat && r.lon === p.lon)?.temperatureC ?? null;
+    const temp = results.find((r: { lat: number; lon: number; temperatureC: number }) => r.lat === p.lat && r.lon === p.lon)?.temperatureC ?? null;
     return { ...p, temperatureC: temp };
   })
 }
@@ -590,6 +590,16 @@ export function getMrConsistent(trajectories: BalloonTrajectory[]): DirectionCon
   };
 }
 
+export function getAverageAltitude(balloonPaths: BalloonTrajectory[]) {
+  const alts = balloonPaths
+    .map((path) => path.path?.[0]?.alt ?? null)
+    .filter((a): a is number => a !== null);
+
+  const avgAlt =
+    alts.length > 0 ? alts.reduce((sum, a) => sum + a, 0) / alts.length : 0;
+  return avgAlt;
+}
+
 // Helper function to calculate bearing between two points
 function calculateBearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const toRad = (deg: number) => deg * (Math.PI / 180);
@@ -602,7 +612,7 @@ function calculateBearing(lat1: number, lon1: number, lat2: number, lon2: number
   const y = Math.sin(dLon) * Math.cos(lat2Rad);
   const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
 
-  let bearing = toDeg(Math.atan2(y, x));
+  const bearing = toDeg(Math.atan2(y, x));
   return (bearing + 360) % 360;
 }
 
@@ -636,17 +646,19 @@ export function getEverestComparison(trajectories: BalloonTrajectory[]): Everest
   };
 }
 
-export type PointWithTemp = {
+export interface PointWithTemp {
+  lat: number;
+  lon: number;
   alt: number;
   temperatureC: number | null;
-};
+}
 
 //computes the best-fit line that describes how temperature changes with altitude.
 export function computeTempTrend(points: PointWithTemp[]) {
   // Filter out points that are null or missing temperature
   const valid = points.filter(
-    (p): p is { alt: number; temperatureC: number } =>
-      typeof p.alt === "number" && typeof p.temperatureC === "number"
+    (p): p is PointWithTemp & { temperatureC: number } =>
+      typeof p.alt === "number" && typeof p.temperatureC === "number" && p.temperatureC !== null
   );
 
   if (valid.length === 0) return null; 
@@ -662,7 +674,7 @@ export function computeTempTrend(points: PointWithTemp[]) {
   const numerator = xs.reduce((acc, x, i) => acc + (x - mx) * (ys[i] - my), 0);
   const denominator = xs.reduce((acc, x) => acc + (x - mx) ** 2, 0);
 
-  const slope = numerator / denominator;
+  const slope = denominator !== 0 ? numerator / denominator : 0;
   const intercept = my - slope * mx;
 
   const ssTot = ys.reduce((acc, y) => acc + (y - my) ** 2, 0);
@@ -670,7 +682,7 @@ export function computeTempTrend(points: PointWithTemp[]) {
     (acc, y, i) => acc + (y - (slope * xs[i] + intercept)) ** 2,
     0
   );
-  const r2 = 1 - ssRes / ssTot;
+  const r2 = ssTot !== 0 ? 1 - ssRes / ssTot : 0;
 
   return { slope, intercept, r2, n: valid.length };
 }

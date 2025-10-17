@@ -1,4 +1,4 @@
-import { Compass, HeartCrack, LucideIcon } from "lucide-react";
+import { HeartCrack, LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import React, { JSX } from "react";
 

@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-// @ts-expect-error
 import "./globals.css";
 import { Toaster } from "sonner";
 
-// @ts-expect-error
 import "leaflet/dist/leaflet.css";
 
 const geistSans = Geist({

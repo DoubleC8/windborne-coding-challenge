@@ -112,6 +112,18 @@ export default function BallonsOverview({
       ),
     },
     {
+      Icon: Plane,
+      title: "Average Distance Traveled",
+      message: (
+        <>
+          The average distance traveled today was{" "}
+          <strong className="text-[var(--app-green)]">
+            {safeDistance(averageDistance).toFixed(2)} km
+          </strong>
+        </>
+      ),
+    },
+    {
       Icon: ChevronUp,
       title: "Highest Altitude",
       message: (
@@ -144,14 +156,20 @@ export default function BallonsOverview({
       ),
     },
     {
-      Icon: Plane,
-      title: "Average Distance Traveled",
+      Icon: Rocket,
+      title: "Biggest Change in Altitude",
       message: (
         <>
-          The average distance traveled today was{" "}
+          Balloon{" "}
           <strong className="text-[var(--app-green)]">
-            {safeDistance(averageDistance).toFixed(2)} km
-          </strong>
+            #{altitudeExplorer.balloonId}
+          </strong>{" "}
+          had the biggest altitude increase, ranging{" "}
+          <strong className="text-[var(--app-green)]">
+            {safeDistance(altitudeExplorer.altitudeRange).toFixed(2)} km
+          </strong>{" "}
+          from {safeAltitude(altitudeExplorer.minAltitude).toFixed(2)} km to{" "}
+          {safeAltitude(altitudeExplorer.maxAltitude).toFixed(2)} km
         </>
       ),
     },
@@ -171,24 +189,7 @@ export default function BallonsOverview({
         </>
       ),
     },
-    {
-      Icon: Rocket,
-      title: "Altitude Explorer",
-      message: (
-        <>
-          Balloon{" "}
-          <strong className="text-[var(--app-green)]">
-            #{altitudeExplorer.balloonId}
-          </strong>{" "}
-          had the biggest altitude increase, ranging{" "}
-          <strong className="text-[var(--app-green)]">
-            {safeDistance(altitudeExplorer.altitudeRange).toFixed(2)} km
-          </strong>{" "}
-          from {safeAltitude(altitudeExplorer.minAltitude).toFixed(2)} km to{" "}
-          {safeAltitude(altitudeExplorer.maxAltitude).toFixed(2)} km
-        </>
-      ),
-    },
+
     {
       Icon: Route,
       title: "Mr. Consistent",
@@ -219,7 +220,7 @@ export default function BallonsOverview({
           <strong className="text-[var(--app-green)]">
             ({everestComparison.everestHeight} km)
           </strong>{" "}
-          - that's {everestComparison.percentage.toFixed(1)}%!
+          that&apos;s {everestComparison.percentage.toFixed(1)}%
         </>
       ),
     },

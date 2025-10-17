@@ -8,11 +8,19 @@ import {
   annotateWithTemperature,
   BalloonTrajectory,
   computeTempTrend,
+  getAverageAltitude,
   getGlobalDrift,
   getLatestPoints,
   PointWithTemp,
 } from "@/lib/utils/balloonData";
-import { Compass, Earth, ScatterChart, Snowflake } from "lucide-react";
+
+import {
+  ChartNoAxesColumn,
+  Compass,
+  Earth,
+  ScatterChart,
+  Snowflake,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -30,8 +38,8 @@ export default function GlobalInsights({
 
   const drift = getGlobalDrift(balloonPaths);
   const tempTrend = computeTempTrend(annotatedPoints);
+  const avgAlt = getAverageAltitude(balloonPaths);
 
-  // Fetch data
   const fetchData = useCallback(async () => {
     if (balloonPaths.length === 0) {
       setLoading(false);
@@ -61,15 +69,25 @@ export default function GlobalInsights({
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load surface temp data";
       setError(errorMessage);
-      console.error("Error fetching surface-temp data:", err);
+      console.error("Error fetching surface temp data:", err);
       toast.error("Failed to fetch surface temp data", {
         description: "Please check your connection and try again.",
       });
     } finally {
       setLoading(false);
     }
-  }, [balloonPaths, sampleSize]);
+  }, [sampleSize, balloonPaths]);
 
+  // only fetch when balloonPaths first becomes available or sample size changes
+  useEffect(() => {
+    if (balloonPaths.length === 0) return;
+    fetchData();
+
+    const interval = setInterval(fetchData, 600000); // every 10 min
+    return () => clearInterval(interval);
+  }, [fetchData, balloonPaths.length]); // use length instead of full array
+
+  // sample size change handler with cooldown
   const handleSampleSizeChange = (value: number) => {
     if (cooldown) {
       toast.warning(
@@ -77,18 +95,16 @@ export default function GlobalInsights({
       );
       return;
     }
-
     setSampleSize(value);
-    toast.info(`Updating with ${value} samples...`);
+    toast.info(`Updating temperature trend with ${value} samples...`);
 
-    // start 30-second cooldown
     setCooldown(true);
     setRemainingTime(30);
 
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       setRemainingTime((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
+          clearInterval(timer);
           setCooldown(false);
           return 0;
         }
@@ -96,16 +112,6 @@ export default function GlobalInsights({
       });
     }, 1000);
   };
-
-  useEffect(() => {
-    if (balloonPaths.length > 0) fetchData();
-  }, [balloonPaths]);
-
-  useEffect(() => {
-    if (balloonPaths.length === 0) return;
-    const interval = setInterval(fetchData, 600000); // 10 min
-    return () => clearInterval(interval);
-  }, [balloonPaths]);
 
   if (error) return <ErrorState error={error} />;
 
@@ -117,17 +123,16 @@ export default function GlobalInsights({
         <h2 className="text-xl font-bold">Global Insights</h2>
       </div>
 
-      {/* Data cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* Drift + Temp Cards */}
+      <div className="lg:grid-cols-3 md:grid-cols-2 grid grid-cols-1 gap-3">
         <BalloonDataCard
           Icon={Compass}
           title="Dominant Wind Drift"
           message={
             <>
               Across all tracked balloons, the constellation drifted
-              predominantly
+              predominantly{" "}
               <strong className="text-[var(--app-green)]">
-                {" "}
                 {drift.direction}
               </strong>{" "}
               (~
@@ -144,7 +149,12 @@ export default function GlobalInsights({
             Icon={Snowflake}
             title="Altitude vs Surface Temperature"
             message={
-              <>Loading Temperature Data… this might take a while (◞‸◟,)</>
+              <>
+                <span className="text-[var(--app-green)]">
+                  Loading Temperature Data
+                </span>
+                , this might take awhile... (◞‸◟,)
+              </>
             }
           />
         ) : (
@@ -155,15 +165,15 @@ export default function GlobalInsights({
               tempTrend ? (
                 <>
                   Decrease in Temperature:
-                  <br />
+                  <br />{" "}
                   <strong className="text-[var(--app-green)]">
                     {tempTrend.slope.toFixed(2)}
                   </strong>{" "}
-                  °C/km (R² =
+                  °C/km (R² ={" "}
                   <strong className="text-[var(--app-green)]">
                     {tempTrend.r2.toFixed(2)}
                   </strong>
-                  , n =
+                  , n ={" "}
                   <strong className="text-[var(--app-green)]">
                     {tempTrend.n}
                   </strong>
@@ -181,9 +191,24 @@ export default function GlobalInsights({
             }
           />
         )}
+
+        <BalloonDataCard
+          Icon={ChartNoAxesColumn}
+          title="Average Altitude"
+          message={
+            <>
+              Across all tracked balloons, the average altitude reached today
+              was{" "}
+              <strong className="text-[var(--app-green)]">
+                {avgAlt.toFixed(2)} km
+              </strong>{" "}
+              .
+            </>
+          }
+        />
       </div>
 
-      {/* Chart section */}
+      {/* Trend Chart */}
       <div className="flex items-center gap-1">
         <ScatterChart className="text-[var(--app-green)]" />
         <h2 className="text-xl font-bold">
@@ -191,8 +216,8 @@ export default function GlobalInsights({
         </h2>
       </div>
 
-      {/* Dropdown + cooldown */}
-      <div className="flex items-center gap-2">
+      {/* Sample Size Selector */}
+      <div className="flex items-center gap-1">
         <label htmlFor="sample-size" className="text-sm text-muted-foreground">
           Sample Size:
         </label>
@@ -200,21 +225,15 @@ export default function GlobalInsights({
           id="sample-size"
           value={sampleSize}
           onChange={(e) => handleSampleSizeChange(Number(e.target.value))}
-          disabled={cooldown}
-          className="bg-background border rounded-md px-2 py-1 text-sm disabled:opacity-50"
+          className="bg-background border rounded-md px-2 py-1 text-sm"
         >
           <option value={50}>50</option>
           <option value={100}>100</option>
           <option value={200}>200</option>
         </select>
-        {cooldown && (
-          <p className="text-xs text-muted-foreground">
-            Please wait {remainingTime}s before changing again.
-          </p>
-        )}
       </div>
 
-      {/* Chart */}
+      {/* Chart or Loader */}
       {loading ? (
         <>
           <GraphLoader />
@@ -233,6 +252,13 @@ export default function GlobalInsights({
             Using surface temperature below each balloon as a proxy.
           </span>
         </>
+      )}
+
+      {/* Cooldown display */}
+      {cooldown && (
+        <p className="text-xs text-muted-foreground">
+          Please wait {remainingTime}s before changing sample size again.
+        </p>
       )}
     </div>
   );

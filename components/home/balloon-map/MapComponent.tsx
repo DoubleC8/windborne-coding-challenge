@@ -8,7 +8,6 @@ import {
   Tooltip,
 } from "react-leaflet";
 import L from "leaflet";
-// @ts-expect-error
 import "leaflet/dist/leaflet.css";
 import { BalloonTrajectory } from "@/lib/utils/balloonData";
 import { memo } from "react";
@@ -29,7 +28,8 @@ const POLYLINE_CONFIG = {
 
 // Fix for default marker icon in Next.js
 if (typeof window !== "undefined") {
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })
+    ._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl:
       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -47,63 +47,62 @@ function getMarkerColor(alt: number): string {
   return "#FF3131"; //red
 }
 
-const BalloonTrajectoryLayer = memo(
-  ({ balloon }: { balloon: BalloonTrajectory }) => {
-    if (!balloon.path.length) return null;
+const BalloonTrajectoryLayer = memo(function BalloonTrajectoryLayer({
+  balloon,
+}: {
+  balloon: BalloonTrajectory;
+}) {
+  if (!balloon.path.length) return null;
 
-    const positions = balloon.path.map(
-      (p) => [p.lat, p.lon] as [number, number]
-    );
+  const positions = balloon.path.map((p) => [p.lat, p.lon] as [number, number]);
 
-    const latest = balloon.path[0];
+  const latest = balloon.path[0];
 
-    const color = getMarkerColor(latest.alt);
+  const color = getMarkerColor(latest.alt);
 
-    const icon = new L.DivIcon({
-      className: "custom-marker",
-      html: `<div style="
+  const icon = new L.DivIcon({
+    className: "custom-marker",
+    html: `<div style="
         background:${color};
         width:10px;
         height:10px;
         border-radius:50%;
         border:1px solid white;
         "></div>`,
-    });
+  });
 
-    return (
-      <>
-        <Polyline positions={positions} pathOptions={POLYLINE_CONFIG}>
-          <Tooltip direction="top">
-            <div className="text-sm">
-              <strong className="text-[var(--app-green)]">
-                Balloon #{balloon.id}
-              </strong>
-              <br />
-              Altitude: {latest.alt.toFixed(1)} km
-              <br />
-              Position: {latest.lat.toFixed(4)}°, {latest.lon.toFixed(4)}°
-            </div>
-          </Tooltip>
-        </Polyline>
+  return (
+    <>
+      <Polyline positions={positions} pathOptions={POLYLINE_CONFIG}>
+        <Tooltip direction="top">
+          <div className="text-sm">
+            <strong className="text-[var(--app-green)]">
+              Balloon #{balloon.id}
+            </strong>
+            <br />
+            Altitude: {latest.alt.toFixed(1)} km
+            <br />
+            Position: {latest.lat.toFixed(4)}°, {latest.lon.toFixed(4)}°
+          </div>
+        </Tooltip>
+      </Polyline>
 
-        <Marker position={[latest.lat, latest.lon]} icon={icon}>
-          <Tooltip direction="top">
-            <div className="text-sm">
-              <strong className="text-[var(--app-green)]">
-                Balloon #{balloon.id}
-              </strong>
-              <br />
-              Altitude: {latest.alt.toFixed(2)} km
-              <br />
-              Current Position: {latest.lat.toFixed(4)}°,{" "}
-              {latest.lon.toFixed(4)}°
-            </div>
-          </Tooltip>
-        </Marker>
-      </>
-    );
-  }
-);
+      <Marker position={[latest.lat, latest.lon]} icon={icon}>
+        <Tooltip direction="top">
+          <div className="text-sm">
+            <strong className="text-[var(--app-green)]">
+              Balloon #{balloon.id}
+            </strong>
+            <br />
+            Altitude: {latest.alt.toFixed(2)} km
+            <br />
+            Current Position: {latest.lat.toFixed(4)}°, {latest.lon.toFixed(4)}°
+          </div>
+        </Tooltip>
+      </Marker>
+    </>
+  );
+});
 
 export default function MapComponent({
   balloonPaths,
